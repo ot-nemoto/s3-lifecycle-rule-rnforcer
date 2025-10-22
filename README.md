@@ -1,7 +1,5 @@
 # S3 Lifecycle Rule Enforcer
 
-# S3 Lifecycle Rule Enforcer
-
 Amazon S3 バケットに対して、
 **「未完了のマルチパートアップロードを 7 日後に自動中止するライフサイクルルール」**
 を一括でチェック・提案・適用するためのツールです。
@@ -170,14 +168,6 @@ python ensure_abort_multipart.py --print-rules --print-proposed --export-dir out
   既存ルールを読み取り → 必要なルールを追記/更新 → まとめて再適用 という安全な手順をとっています。
 - 既に適切なルールがあるバケットは何も変更しません。
 - `--export-dir` を活用することで、事前に提案内容をレビューしてから適用できます。
-
----
-
-## 🧭 ライセンス / 管理
-
-- 内部利用目的を想定（OSS ではない）
-- メンテナー: インフラ担当チーム
-- 言語: Python 3.x
 
 ---
 

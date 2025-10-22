@@ -109,3 +109,6 @@ site/
 # Ignore txt files per request
 *.txt
 
+# But keep requirements.txt tracked
+!requirements.txt
+
