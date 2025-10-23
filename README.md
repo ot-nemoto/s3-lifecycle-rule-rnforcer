@@ -118,6 +118,7 @@ python ensure_abort_multipart.py --print-rules --print-proposed --export-dir out
 | `--export-dir <dir>` | ルールをファイルとして出力するディレクトリ           |
 | `--buckets`          | 空白区切りで複数のバケット名を指定                   |
 | `--bucket-file`      | 1行1バケット名のファイルパス                         |
+| `--lifecycle-version` | ライフサイクルルールのバージョン指定: auto|v1|v2。auto は既存ルールに合わせて検出（既存なしは v2 を優先）。 |
 
 ---
 

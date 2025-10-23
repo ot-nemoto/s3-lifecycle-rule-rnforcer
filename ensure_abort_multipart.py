@@ -36,13 +36,60 @@ def upsert_rule(
     rules: List[Dict[str, Any]], days: int
 ) -> Tuple[List[Dict[str, Any]], bool]:
     """必要なら全体適用の中止ルールを追加/更新"""
+    # Deprecated: original function created V2-style rules (Filter={}) by default.
+    # Add lifecycle version support in caller by passing 'lifecycle_version' via kwargs.
+    raise TypeError(
+        "upsert_rule without lifecycle_version is removed; call upsert_rule_with_version instead"
+    )
+
+
+def upsert_rule_with_version(
+    rules: List[Dict[str, Any]], days: int, lifecycle_version: str = "auto"
+) -> Tuple[List[Dict[str, Any]], bool]:
+    """
+    Ensure an abort-incomplete-multipart-upload rule exists, matching lifecycle_version.
+
+    lifecycle_version: 'auto'|'v1'|'v2'
+      - auto: detect from existing rules (Filter -> v2, Prefix -> v1). If no rules, defaults to v1.
+      - v1: use legacy 'Prefix' key for global rule (Prefix: "").
+      - v2: use 'Filter': {} for global rule.
+    Returns updated rules list and a boolean indicating whether a change was made.
+    """
+    if lifecycle_version not in ("auto", "v1", "v2"):
+        raise ValueError("lifecycle_version must be one of: auto, v1, v2")
+
+    # detect version when auto
+    final_version = lifecycle_version
+    if lifecycle_version == "auto":
+        final_version = None
+        for r in rules:
+            if "Filter" in r and r["Filter"] is not None:
+                final_version = "v2"
+                break
+            if "Prefix" in r:
+                final_version = "v1"
+                break
+        if final_version is None:
+            # default to v2 when no existing rules (use Filter style)
+            final_version = "v2"
+
     target_id = RULE_ID_PREFIX.format(days)
-    new_rule = {
-        "ID": target_id,
-        "Status": "Enabled",
-        "Filter": {},
-        "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": int(days)},
-    }
+
+    if final_version == "v1":
+        new_rule = {
+            "ID": target_id,
+            "Status": "Enabled",
+            # global rule for v1 style
+            "Prefix": "",
+            "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": int(days)},
+        }
+    else:  # v2
+        new_rule = {
+            "ID": target_id,
+            "Status": "Enabled",
+            "Filter": {},
+            "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": int(days)},
+        }
 
     for r in rules:
         if is_global_abort_rule(r, days):
@@ -103,6 +150,15 @@ def main():
     parser.add_argument(
         "--export-dir", default=None, help="ルールをファイル出力するディレクトリ"
     )
+    parser.add_argument(
+        "--lifecycle-version",
+        choices=["auto", "v1", "v2"],
+        default="auto",
+        help=(
+            "Lifecycle rule version to use: auto (detect)|v1 (Prefix)|v2 (Filter). "
+            "Default: auto -> prefers existing style or v1 if none."
+        ),
+    )
     # ★ 修正箇所：空白区切り複数指定に対応
     parser.add_argument(
         "--buckets", nargs="+", help="空白区切りで複数のバケット名を指定"
@@ -154,7 +210,9 @@ def main():
                 else:
                     raise
 
-            proposed_rules, will_change = upsert_rule(current_rules[:], args.days)
+            proposed_rules, will_change = upsert_rule_with_version(
+                current_rules[:], args.days, lifecycle_version=args.lifecycle_version
+            )
 
             # ルール出力
             if args.print_rules:
